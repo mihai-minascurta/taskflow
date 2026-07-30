@@ -1,0 +1,36 @@
+# --- Python / Flask (backend) ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.Python
+instance/
+.pytest_cache/
+.mypy_cache/
+
+# --- Environment files ---
+.env
+.env.*
+!.env.example
+
+# --- Node / React / Vite (frontend) ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+logs/
