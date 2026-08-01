@@ -46,7 +46,7 @@ module "ebs_csi" {
 
 module "rds" {
 
-  source = "./modules/rds"
+  source = "../modules/rds"
 
   vpc_id = module.networking.vpc_id
 
