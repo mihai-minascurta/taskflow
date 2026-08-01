@@ -1,0 +1,40 @@
+name: Initialize Database
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  init-database:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Initialize schema
+        env:
+          PGPASSWORD: ${{ secrets.TF_VAR_database_password }}
+        run: |
+          psql \
+            -h ${{ secrets.RDS_ENDPOINT }} \
+            -U ${{ secrets.TF_VAR_database_username }} \
+            -d ${{ secrets.TF_VAR_database_name }} \
+            -f database/schema.sql
+
+      - name: Seed database
+        env:
+          PGPASSWORD: ${{ secrets.TF_VAR_database_password }}
+        run: |
+          psql \
+            -h ${{ secrets.RDS_ENDPOINT }} \
+            -U ${{ secrets.TF_VAR_database_username }} \
+            -d ${{ secrets.TF_VAR_database_name }} \
+            -f database/seed.sql
