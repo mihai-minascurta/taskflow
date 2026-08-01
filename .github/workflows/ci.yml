@@ -87,4 +87,46 @@ jobs:
           TF_VAR_database_username: ${{ secrets.TF_VAR_database_username }}
           TF_VAR_database_password: ${{ secrets.TF_VAR_database_password }}
         run: terraform apply -auto-approve
-        
+
+      - name: Configure kubectl 
+        run: |
+            aws eks update-kubeconfig \
+            --region eu-central-1 \
+            --name taskflow-eks
+
+      - name: Get RDS Endpoint
+        id: rds
+        working-directory: ./terraform/dev
+        run: |
+          echo "endpoint=$(terraform output -raw database_endpoint)" >> $GITHUB_OUTPUT
+
+      - name: Create ConfigMap
+        run: |
+          kubectl create configmap taskflow-db-init \
+            --from-file=database/schema.sql \
+            --from-file=database/seed.sql \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create Database Secret
+        run: |
+          kubectl create secret generic taskflow-db-secret \
+            --from-literal=DB_HOST="${{ steps.rds.outputs.endpoint }}" \
+            --from-literal=DB_NAME="${{ secrets.TF_VAR_database_name }}" \
+            --from-literal=DB_USER="${{ secrets.TF_VAR_database_username }}" \
+            --from-literal=DB_PASSWORD="${{ secrets.TF_VAR_database_password }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Delete Previous Init Job
+        run: |
+          kubectl delete job taskflow-db-init --ignore-not-found=true
+
+      - name: Initialize Database
+        run: |
+          kubectl apply -f kubernetes/jobs/init-db.yaml
+
+      - name: Wait for Database Initialization
+        run: |
+          kubectl wait \
+            --for=condition=complete \
+            job/taskflow-db-init \
+            --timeout=300s

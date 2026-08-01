@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: taskflow-db-init
+
+spec:
+  backoffLimit: 1
+
+  template:
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: init-db
+
+          image: postgres:16
+
+          envFrom:
+            - secretRef:
+                name: taskflow-db-secret
+
+          command:
+            - /bin/sh
+            - -c
+            - |
+              export PGPASSWORD=$DB_PASSWORD
+
+              psql \
+                -h "$DB_HOST" \
+                -U "$DB_USER" \
+                -d "$DB_NAME" \
+                -f /sql/schema.sql
+
+              psql \
+                -h "$DB_HOST" \
+                -U "$DB_USER" \
+                -d "$DB_NAME" \
+                -f /sql/seed.sql
+
+          volumeMounts:
+            - name: sql
+              mountPath: /sql
+
+      volumes:
+        - name: sql
+          configMap:
+            name: taskflow-db-init
