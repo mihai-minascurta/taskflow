@@ -11,3 +11,9 @@ output "oidc_issuer_url" {
   description = "OIDC issuer URL for IRSA"
   value = aws_eks_cluster.main_cluster.identity[0].oidc[0].issuer
 }
+
+output "cluster_security_group_id" {
+
+  value = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+
+}

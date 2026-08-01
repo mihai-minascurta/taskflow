@@ -30,7 +30,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }} #automated, not necesary to make a secret manually
-
       - name: Build and push to GHCR taskflow-backend Docker Image
         working-directory: ./backend
         run: |
@@ -46,7 +45,6 @@ jobs:
 
           docker push ${IMAGE_NAME}:latest
           docker push ${IMAGE_NAME}:${SHORT_SHA}
-
       - name: Build and push to GHCR taskflow-frontend Docker Image
         working-directory: ./frontend
         run: |
@@ -63,5 +61,39 @@ jobs:
           docker push ${IMAGE_NAME}:latest
           docker push ${IMAGE_NAME}:${SHORT_SHA}
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform Init (Backend)
+        working-directory: ./terraform/backend
+        run: terraform init
+      - name: Terraform Plan (Backend)
+        working-directory: ./terraform/backend
+        run: terraform plan
+      - name: Terraform Apply (Backend)
+        working-directory: ./terraform/backend
+        run: terraform apply -auto-approve
 
+      - name: Terraform Init (Dev)
+        working-directory: ./terraform/dev
+        run: terraform init
+      - name: Terraform Plan (Dev)
+        working-directory: ./terraform/dev
+        env:
+          TF_VAR_database_name: ${{ secrets.TF_VAR_database_name }}
+          TF_VAR_database_username: ${{ secrets.TF_VAR_database_username }}
+          TF_VAR_database_password: ${{ secrets.TF_VAR_database_password }}
+        run: terraform plan
+      - name: Terraform Apply (Dev)
+        working-directory: ./terraform/dev
+        env:
+          TF_VAR_database_name: ${{ secrets.TF_VAR_database_name }}
+          TF_VAR_database_username: ${{ secrets.TF_VAR_database_username }}
+          TF_VAR_database_password: ${{ secrets.TF_VAR_database_password }}
+        run: terraform apply -auto-approve
         

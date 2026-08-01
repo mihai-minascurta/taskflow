@@ -44,3 +44,20 @@ module "ebs_csi" {
   oidc_issuer_url = module.cluster.oidc_issuer_url
 }
 
+module "rds" {
+    
+  source = "./rds"
+
+  vpc_id = module.networking.vpc_id
+
+  private_subnet_ids = [
+    module.networking.private_subnet_a_id,
+    module.networking.private_subnet_b_id
+  ]
+
+  eks_security_group_id = module.cluster.cluster_security_group_id
+
+  database_name     = var.database_name
+  database_username = var.database_username
+  database_password = var.database_password
+}
