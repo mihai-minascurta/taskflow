@@ -1,0 +1,79 @@
+name: Initialize Database
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  init-database:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform/dev
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region eu-central-1 \
+            --name $(terraform output -raw cluster_name)
+
+      - name: Get RDS Endpoint
+        id: rds
+        run: |
+          echo "endpoint=$(terraform output -raw database_endpoint)" >> $GITHUB_OUTPUT
+
+      - name: Create Database ConfigMap
+        run: |
+          kubectl create configmap taskflow-db-init \
+            --from-file=../../database/schema.sql \
+            --from-file=../../database/seed.sql \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create Database Secret
+        run: |
+          kubectl create secret generic taskflow-db-secret \
+            --from-literal=DB_HOST="${{ steps.rds.outputs.endpoint }}" \
+            --from-literal=DB_NAME="${{ secrets.TF_VAR_database_name }}" \
+            --from-literal=DB_USER="${{ secrets.TF_VAR_database_username }}" \
+            --from-literal=DB_PASSWORD="${{ secrets.TF_VAR_database_password }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Delete Previous Init Job
+        run: |
+          kubectl delete job taskflow-db-init --ignore-not-found=true
+
+      - name: Run Database Initialization
+        run: |
+          kubectl apply -f ../../kubernetes/jobs/init-db.yaml
+
+      - name: Wait For Completion
+        run: |
+          kubectl wait \
+            --for=condition=complete \
+            job/taskflow-db-init \
+            --timeout=300s
+
+      - name: Show Logs
+        if: always()
+        run: |
+          kubectl logs job/taskflow-db-init
