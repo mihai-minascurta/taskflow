@@ -43,7 +43,7 @@ resource "aws_db_instance" "this" {
 
 
 
-  backup_retention_period = 7
+  backup_retention_period = 0
 
 
 
