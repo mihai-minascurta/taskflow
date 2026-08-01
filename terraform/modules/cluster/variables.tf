@@ -1,0 +1,15 @@
+variable "cluster_name" {
+  type = string
+}
+
+variable "kubernetes_version" {
+  type = string
+}
+
+variable "cluster_role_arn" {
+  type = string
+}
+
+variable "subnets_ids" {
+  type = list(string)
+}
