@@ -19,6 +19,7 @@ spec:
       containers:
       - name: backend-container
         image: ghcr.io/mihai-minascurta/taskflow-backend:latest
+        imagePullPolicy: Always
 
         resources:
           limits:
@@ -51,13 +52,13 @@ spec:
           - name: DATABASE_URL
             valueFrom:
               secretKeyRef:
-                name: taskflow-db-secret
+                name: taskflow-backend-secret
                 key: DATABASE_URL
 
           - name: SECRET_KEY
             valueFrom:
               secretKeyRef:
-                name: taskflow-db-secret
+                name: taskflow-backend-secret
                 key: SECRET_KEY
 
           - name: FLASK_ENV

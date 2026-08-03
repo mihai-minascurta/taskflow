@@ -61,3 +61,10 @@ module "rds" {
   database_username = var.database_username
   database_password = var.database_password
 }
+
+module "alb_controller" {
+
+    source = "../modules/alb"
+    cluster_name = module.cluster.cluster_name
+    oidc_issuer_url = module.cluster.oidc_issuer_url
+}
