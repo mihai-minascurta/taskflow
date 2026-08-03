@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: backend-deployment
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend-container
+        image: ghcr.io/mihai-minascurta/taskflow-backend:latest
+
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "500m"
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3        
+
+
+        env:
+          - name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: taskflow-db-secret
+                key: DATABASE_URL
+
+          - name: SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: taskflow-db-secret
+                key: SECRET_KEY
+
+          - name: FLASK_ENV
+            valueFrom:
+              configMapKeyRef:
+                name: taskflow-backend-config
+                key: FLASK_ENV
+
+          - name: LOG_LEVEL
+            valueFrom:
+              configMapKeyRef:
+                name: taskflow-backend-config
+                key: LOG_LEVEL
+
+          - name: FLASK_DEBUG
+            valueFrom:
+              configMapKeyRef:
+                name: taskflow-backend-config
+                key: FLASK_DEBUG       
+
+          - name: PORT
+            valueFrom:
+              configMapKeyRef:
+                name: taskflow-backend-config
+                key: PORT   
+
+          - name: CORS_ORIGINS
+            valueFrom:
+              configMapKeyRef:
+                name: taskflow-backend-config
+                key: CORS_ORIGINS                                           
+                        
+
+        ports:
+        - containerPort: 5000

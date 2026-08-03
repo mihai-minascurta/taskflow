@@ -48,16 +48,19 @@ jobs:
             --from-file=../../database/schema.sql \
             --from-file=../../database/seed.sql \
             --dry-run=client -o yaml | kubectl apply -f -
-
+                
       - name: Create Database Secret
         run: |
-          kubectl create secret generic taskflow-db-secret \
+            kubectl create secret generic taskflow-db-secret \
             --from-literal=DB_HOST="${{ steps.rds.outputs.endpoint }}" \
             --from-literal=DB_NAME="${{ secrets.TF_VAR_database_name }}" \
             --from-literal=DB_USER="${{ secrets.TF_VAR_database_username }}" \
             --from-literal=DB_PASSWORD="${{ secrets.TF_VAR_database_password }}" \
+            --from-literal=SECRET_KEY="${{ secrets.BACKEND_SECRET_KEY }}" \
+            --from-literal=DATABASE_URL="postgresql://${{ secrets.TF_VAR_database_username }}:${{ secrets.TF_VAR_database_password }}@${{ steps.rds.outputs.endpoint }}:5432/${{ secrets.TF_VAR_database_name }}" \
             --dry-run=client -o yaml | kubectl apply -f -
-
+               
+                
       - name: Delete Previous Init Job
         run: |
           kubectl delete job taskflow-db-init --ignore-not-found=true
