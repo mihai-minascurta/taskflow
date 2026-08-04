@@ -169,7 +169,7 @@ jobs:
 
       - name: Deploy Backend Service
         run: |
-            kubectl apply -f kubernetes/deployment/backend_s.yaml
+            kubectl apply -f kubernetes/service/backend_s.yaml
 
       - name: Wait for Backend Rollout
         run: |
@@ -181,7 +181,7 @@ jobs:
 
       - name: Deploy Frontend Service
         run: |
-            kubectl apply -f kubernetes/deployment/frontend_s.yaml
+            kubectl apply -f kubernetes/service/frontend_s.yaml
 
       - name: Wait for Frontend Rollout
         run: |
