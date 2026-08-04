@@ -36,7 +36,7 @@ class Config:
         "pool_pre_ping": True,
     }
 
-    CORS_ORIGINS = _split_origins(os.environ.get("CORS_ORIGINS", "http://localhost:5173"))
+    CORS_ORIGINS = _split_origins(os.environ.get("CORS_ORIGINS", "*"))
 
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 
@@ -55,9 +55,7 @@ class ProductionConfig(Config):
 
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "TEST_DATABASE_URL", "sqlite:///:memory:"
-    )
+    SQLALCHEMY_DATABASE_URI = os.environ.get("TEST_DATABASE_URL", "sqlite:///:memory:")
 
 
 CONFIG_BY_NAME = {

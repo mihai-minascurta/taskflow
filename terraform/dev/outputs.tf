@@ -1,3 +1,6 @@
+output "cluster_name" {
+    value = module.cluster.cluster_name
+}
 
 output "vpc_id" {
   value = module.networking.vpc_id
