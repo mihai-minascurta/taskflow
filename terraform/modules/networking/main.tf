@@ -16,9 +16,9 @@ resource "aws_subnet" "public_a_subnet" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                                  = "Public-Subnet-A"
-    "kubernetes.io/cluster/challenge-eks" = "shared"
-    "kubernetes.io/role/elb"              = "1"
+    Name                                 = "Public-Subnet-A"
+    "kubernetes.io/cluster/taskflow-eks" = "shared"
+    "kubernetes.io/role/elb"             = "1"
   }
 
 }
@@ -30,9 +30,9 @@ resource "aws_subnet" "public_b_subnet" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                                  = "Public-Subnet-B"
-    "kubernetes.io/cluster/challenge-eks" = "shared"
-    "kubernetes.io/role/elb"              = "1"
+    Name                                 = "Public-Subnet-B"
+    "kubernetes.io/cluster/taskflow-eks" = "shared"
+    "kubernetes.io/role/elb"             = "1"
   }
 
 }
@@ -44,9 +44,9 @@ resource "aws_subnet" "private_a_subnet" {
 
 
   tags = {
-    Name                                  = "Public-Subnet-A"
-    "kubernetes.io/cluster/challenge-eks" = "shared"
-    "kubernetes.io/role/internal-elb"     = "1"
+    Name                                 = "Public-Subnet-A"
+    "kubernetes.io/cluster/taskflow-eks" = "shared"
+    "kubernetes.io/role/internal-elb"    = "1"
   }
 
 }
@@ -57,9 +57,9 @@ resource "aws_subnet" "private_b_subnet" {
   availability_zone = "eu-central-1b"
 
   tags = {
-    Name                                  = "Public-Subnet-A"
-    "kubernetes.io/cluster/challenge-eks" = "shared"
-    "kubernetes.io/role/internal-elb"     = "1"
+    Name                                 = "Public-Subnet-A"
+    "kubernetes.io/cluster/taskflow-eks" = "shared"
+    "kubernetes.io/role/internal-elb"    = "1"
   }
 
 }
