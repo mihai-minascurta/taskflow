@@ -32,6 +32,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }} #automated, not necesary to make a secret manually
+        
+      - name: Create frontend .env
+        working-directory: ./frontend
+        run: |
+            cat > .env <<EOF
+            VITE_API_URL=/api
+            EOF
       - name: Build and push to GHCR taskflow-backend Docker Image
         working-directory: ./backend
         run: |
