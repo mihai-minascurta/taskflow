@@ -10,10 +10,6 @@ jobs:
   destroy:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: terraform/dev
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,19 +25,20 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
+        working-directory: terraform/dev
         run: terraform init
 
       - name: Configure kubectl
+        working-directory: terraform/dev
         run: |
           aws eks update-kubeconfig \
             --region eu-central-1 \
             --name $(terraform output -raw cluster_name)
 
+
       # Delete Kubernetes resources
 
-
       - name: Delete Ingress
-        working-directory: ../..
         run: |
           kubectl delete -f kubernetes/ingress/ingress.yaml --ignore-not-found=true
 
@@ -52,13 +49,11 @@ jobs:
             --timeout=300s || true
 
       - name: Delete Backend
-        working-directory: ../..
         run: |
           kubectl delete -f kubernetes/deployment/backend_d.yaml --ignore-not-found=true
           kubectl delete -f kubernetes/service/backend_s.yaml --ignore-not-found=true
 
       - name: Delete Frontend
-        working-directory: ../..
         run: |
           kubectl delete -f kubernetes/deployment/frontend_d.yaml --ignore-not-found=true
           kubectl delete -f kubernetes/service/frontend_s.yaml --ignore-not-found=true
@@ -71,8 +66,10 @@ jobs:
           kubectl delete secret taskflow-backend-secret --ignore-not-found=true
           kubectl delete secret taskflow-db-secret --ignore-not-found=true
 
-
       # Remove ALB Controller
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
 
       - name: Uninstall ALB Controller
         run: |
@@ -88,6 +85,7 @@ jobs:
       # Destroy infrastructure
 
       - name: Terraform Destroy
+        working-directory: terraform/dev
         env:
           TF_VAR_database_name: ${{ secrets.TF_VAR_database_name }}
           TF_VAR_database_username: ${{ secrets.TF_VAR_database_username }}
