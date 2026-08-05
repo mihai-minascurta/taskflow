@@ -18,7 +18,7 @@ spec:
 
           envFrom:
             - secretRef:
-                namskflow-db-secrete: ta
+                name: taskflow-db-secret
 
           command:
             - /bin/sh
