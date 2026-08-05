@@ -3,6 +3,9 @@ kind: Service
 
 metadata:
   name: backend-service
+  labels:
+    app: backend
+    
 spec:
   type: ClusterIP
 
@@ -10,5 +13,6 @@ spec:
     app: backend
 
   ports:
-    - port: 5000
+    - name: http
+      port: 5000
       targetPort: 5000

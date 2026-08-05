@@ -15,13 +15,17 @@ from app.extensions import cors, db
 from app.routes import register_blueprints
 from app.utils.errors import register_error_handlers
 from app.utils.logger import configure_logging
+from prometheus_flask_exporter import PrometheusMetrics
 
 logger = logging.getLogger(__name__)
+
 
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(get_config())
+
+    PrometheusMetrics(app)
 
     configure_logging(app)
 

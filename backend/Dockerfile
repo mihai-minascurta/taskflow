@@ -12,5 +12,5 @@ COPY . .
 
 EXPOSE 5000
 
-CMD ["flask" , "--app" , "wsgi" , "run" , "--host=0.0.0.0" , "--port=5000" , "--debug"]
+CMD ["python", "wsgi.py"]
 

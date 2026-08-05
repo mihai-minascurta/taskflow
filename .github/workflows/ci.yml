@@ -149,6 +149,24 @@ jobs:
             kubectl rollout status deployment/aws-load-balancer-controller \
             -n kube-system \
             --timeout=300s
+        
+      - name: Add Prometheus Community Helm Repo
+        run: |
+            helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+            helm repo update
+        #PROMETHEUS STACKK INSTALATION
+      - name: Install kube-prometheus-stack
+        run: |
+            helm upgrade --install monitoring \
+            prometheus-community/kube-prometheus-stack \
+            --namespace monitoring \
+            --create-namespace
+
+      - name: Wait for Prometheus
+        run: |
+            kubectl rollout status deployment/monitoring-kube-prometheus-operator \
+            -n monitoring \
+            --timeout=300s
 
 
         #CREATE CONFIGMAP & SECRETS FOR BACKEND, FOR FRONTEND IT IS NOT NECCESARY -----------------------------------
@@ -181,6 +199,10 @@ jobs:
       - name: Wait for Backend Rollout
         run: |
             kubectl rollout status deployment/backend-deployment --timeout=300s
+
+      - name: Deploy Backend ServiceMonitor
+        run: |
+            kubectl apply -f kubernetes/monitoring/servicemonitor.yaml
 
       - name: Deploy Frontend
         run: |
