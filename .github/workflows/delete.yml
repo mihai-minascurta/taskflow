@@ -1,0 +1,95 @@
+name: Destroy Infrastructure
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform/dev
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region eu-central-1 \
+            --name $(terraform output -raw cluster_name)
+
+      # Delete Kubernetes resources
+
+
+      - name: Delete Ingress
+        working-directory: ../..
+        run: |
+          kubectl delete -f kubernetes/ingress/ingress.yaml --ignore-not-found=true
+
+      - name: Wait for Ingress deletion
+        run: |
+          kubectl wait \
+            --for=delete ingress/taskflow-ingress \
+            --timeout=300s || true
+
+      - name: Delete Backend
+        working-directory: ../..
+        run: |
+          kubectl delete -f kubernetes/deployment/backend_d.yaml --ignore-not-found=true
+          kubectl delete -f kubernetes/service/backend_s.yaml --ignore-not-found=true
+
+      - name: Delete Frontend
+        working-directory: ../..
+        run: |
+          kubectl delete -f kubernetes/deployment/frontend_d.yaml --ignore-not-found=true
+          kubectl delete -f kubernetes/service/frontend_s.yaml --ignore-not-found=true
+
+      - name: Delete ConfigMaps and Secrets
+        run: |
+          kubectl delete configmap taskflow-backend-config --ignore-not-found=true
+          kubectl delete configmap taskflow-db-init --ignore-not-found=true
+
+          kubectl delete secret taskflow-backend-secret --ignore-not-found=true
+          kubectl delete secret taskflow-db-secret --ignore-not-found=true
+
+
+      # Remove ALB Controller
+
+      - name: Uninstall ALB Controller
+        run: |
+          helm uninstall aws-load-balancer-controller \
+            -n kube-system || true
+
+      - name: Delete ALB ServiceAccount
+        run: |
+          kubectl delete serviceaccount aws-load-balancer-controller \
+            -n kube-system \
+            --ignore-not-found=true
+
+      # Destroy infrastructure
+
+      - name: Terraform Destroy
+        env:
+          TF_VAR_database_name: ${{ secrets.TF_VAR_database_name }}
+          TF_VAR_database_username: ${{ secrets.TF_VAR_database_username }}
+          TF_VAR_database_password: ${{ secrets.TF_VAR_database_password }}
+        run: terraform destroy -auto-approve
