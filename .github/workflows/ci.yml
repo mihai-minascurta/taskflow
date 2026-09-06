@@ -220,6 +220,11 @@ jobs:
         run: |
             kubectl apply -f kubernetes/ingress/ingress.yaml
 
+      - name: Restart frontend deployment
+        run: |
+            kubectl rollout restart deployment/frontend-deployment
+            kubectl rollout status deployment/frontend-deployment --timeout=300s
+
     #DEBUG PART --------------------------------------------------------------------------------------------
       - name: Show Ingress
         run: |
