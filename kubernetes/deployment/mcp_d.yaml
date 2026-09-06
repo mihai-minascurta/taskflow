@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: mcp-deployment
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: mcp
+  template:
+    metadata:
+      labels:
+        app: mcp
+    spec:
+      containers:
+        - name: mcp-container
+          image: ghcr.io/mihai-minascurta/taskflow-mcp:latest
+          imagePullPolicy: Always
+
+          resources:
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+
+          ports:
+            - containerPort: 8000
