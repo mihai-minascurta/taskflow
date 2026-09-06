@@ -42,6 +42,13 @@ class Config:
 
     PORT = int(os.environ.get("PORT", 5000))
 
+    # Chat assistant (Groq Responses API + remote MCP server). See
+    # app/routes/chat.py and .env.example.
+    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+    GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+    MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "")
+    MCP_SERVER_LABEL = os.environ.get("MCP_SERVER_LABEL", "taskflow-mcp")
+
     JSON_SORT_KEYS = False
 
 

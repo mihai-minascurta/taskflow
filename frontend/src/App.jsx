@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import Navbar from './components/layout/Navbar'
+import ChatWidget from './components/chat/ChatWidget'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import ProjectDetail from './pages/ProjectDetail'
@@ -13,6 +14,7 @@ function AppLayout() {
       <main className="main-content">
         <Outlet />
       </main>
+      <ChatWidget />
     </div>
   )
 }
