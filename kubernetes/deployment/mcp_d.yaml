@@ -21,6 +21,10 @@ spec:
           image: ghcr.io/mihai-minascurta/taskflow-mcp:latest
           imagePullPolicy: Always
 
+          env:
+            - name: AWS_DEFAULT_REGION
+              value: "eu-central-1"
+
           resources:
             limits:
               memory: "1Gi"
