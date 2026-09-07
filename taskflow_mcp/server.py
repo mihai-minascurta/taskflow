@@ -9,6 +9,7 @@ mcp = MCPServer("taskflow-infra")
 
 cloudwatch = boto3.client("cloudwatch")
 
+
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request):
     return JSONResponse({"status": "ok"})
