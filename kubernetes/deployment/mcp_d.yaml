@@ -16,6 +16,7 @@ spec:
       labels:
         app: mcp
     spec:
+      serviceAccountName: mcp-service-account
       containers:
         - name: mcp-container
           image: ghcr.io/mihai-minascurta/taskflow-mcp:latest

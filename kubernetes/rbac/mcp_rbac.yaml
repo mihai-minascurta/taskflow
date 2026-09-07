@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-service-account
+  namespace: default
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: mcp-node-reader
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mcp-node-reader-binding
+subjects:
+  - kind: ServiceAccount
+    name: mcp-service-account
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: mcp-node-reader
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-pod-reader
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcp-pod-reader-binding
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: mcp-service-account
+    namespace: default
+roleRef:
+  kind: Role
+  name: mcp-pod-reader
+  apiGroup: rbac.authorization.k8s.io

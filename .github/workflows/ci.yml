@@ -1,105 +1,105 @@
 name: Main CI
-
+ 
 on:
   push:
     branches:
         - main
   workflow_dispatch:
-
+ 
 permissions:
   contents: read
   packages: write
-
-
+ 
 jobs:
   main_job:
-
+ 
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
+ 
     steps:
-
+ 
       - name: Checkout repository
         uses: actions/checkout@v4
-
+ 
         #IMAGES, GHCR -----------------------------------------------------------------------------
-
+ 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }} #automated, not necesary to make a secret manually
-        
+ 
       - name: Create frontend .env
         working-directory: ./frontend
         run: |
             cat > .env <<EOF
             VITE_API_URL=/api
             EOF
+ 
       - name: Build and push to GHCR taskflow-backend Docker Image
         working-directory: ./backend
         run: |
-
+ 
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-
+ 
           IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/taskflow-backend"
-
+ 
           docker build \
           -t ${IMAGE_NAME}:latest \
           -t ${IMAGE_NAME}:${SHORT_SHA} \
           .
-
+ 
           docker push ${IMAGE_NAME}:latest
           docker push ${IMAGE_NAME}:${SHORT_SHA}
+ 
       - name: Build and push to GHCR taskflow-frontend Docker Image
         working-directory: ./frontend
         run: |
-
+ 
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-
+ 
           IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/taskflow-frontend"
-
+ 
           docker build \
           -t ${IMAGE_NAME}:latest \
           -t ${IMAGE_NAME}:${SHORT_SHA} \
           .
-
+ 
           docker push ${IMAGE_NAME}:latest
           docker push ${IMAGE_NAME}:${SHORT_SHA}
-
+ 
       - name: Build and push to GHCR taskflow-mcp Docker Image
         working-directory: ./taskflow_mcp
         run: |
-
+ 
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-
+ 
           IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/taskflow-mcp"
-
+ 
           docker build \
           -t ${IMAGE_NAME}:latest \
           -t ${IMAGE_NAME}:${SHORT_SHA} \
           .
-
+ 
           docker push ${IMAGE_NAME}:latest
           docker push ${IMAGE_NAME}:${SHORT_SHA}
-        
+ 
         #TERRAFORM CONFIGURATION -------------------------------------------------------------------
-
+ 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
+ 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
-
+ 
       - name: Terraform Init (Dev)
         working-directory: ./terraform/dev
         run: terraform init
+ 
       - name: Terraform Plan (Dev)
         working-directory: ./terraform/dev
         env:
@@ -107,6 +107,7 @@ jobs:
           TF_VAR_database_username: ${{ secrets.TF_VAR_database_username }}
           TF_VAR_database_password: ${{ secrets.TF_VAR_database_password }}
         run: terraform plan
+ 
       - name: Terraform Apply (Dev)
         working-directory: ./terraform/dev
         env:
@@ -114,7 +115,7 @@ jobs:
           TF_VAR_database_username: ${{ secrets.TF_VAR_database_username }}
           TF_VAR_database_password: ${{ secrets.TF_VAR_database_password }}
         run: terraform apply -auto-approve
-
+ 
       - name: Get Terraform Outputs
         id: terraform
         working-directory: ./terraform/dev
@@ -123,14 +124,15 @@ jobs:
             echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
             echo "vpc_id=$(terraform output -raw vpc_id)" >> $GITHUB_OUTPUT
             echo "endpoint=$(terraform output -raw database_endpoint)" >> $GITHUB_OUTPUT
-
+ 
         #ALB LOAD BALANCER FULL CONFIGURATION ---------------------------------------------------------------------
-      - name: Configure kubectl 
+ 
+      - name: Configure kubectl
         run: |
             aws eks update-kubeconfig \
             --region eu-central-1 \
             --name ${{ steps.terraform.outputs.cluster_name }}
-
+ 
       - name: Create ALB ServiceAccount
         run: |
             cat <<EOF | kubectl apply -f -
@@ -142,15 +144,16 @@ jobs:
               annotations:
                 eks.amazonaws.com/role-arn: ${{ steps.terraform.outputs.alb_role_arn }}
             EOF
-
+ 
       - name: Setup Helm
         uses: azure/setup-helm@v4
-
+ 
       - name: Add AWS Helm Repository
         run: |
             helm repo add eks https://aws.github.io/eks-charts
             helm repo update
-      - name: Install ALB 
+ 
+      - name: Install ALB
         run: |
             helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
             -n kube-system \
@@ -159,25 +162,26 @@ jobs:
             --set serviceAccount.name=aws-load-balancer-controller \
             --set region=eu-central-1 \
             --set vpcId=${{ steps.terraform.outputs.vpc_id }}
-
+ 
       - name: Wait for ALB Controller
         run: |
             kubectl rollout status deployment/aws-load-balancer-controller \
             -n kube-system \
             --timeout=300s
-
+ 
       - name: Stabilize ALB Controller webhook
         run: |
             kubectl rollout restart deployment/aws-load-balancer-controller \
             -n kube-system
-
+ 
             kubectl rollout status deployment/aws-load-balancer-controller \
             -n kube-system \
             --timeout=300s
-
+ 
             sleep 30
-        
+ 
         #CREATE CONFIGMAP & SECRETS FOR BACKEND, FOR FRONTEND IT IS NOT NECCESARY -----------------------------------
+ 
       - name: Create Backend ConfigMap
         run: |
             kubectl create configmap taskflow-backend-config \
@@ -187,102 +191,102 @@ jobs:
             --from-literal=PORT=5000 \
             --from-literal=CORS_ORIGINS=* \
             --dry-run=client -o yaml | kubectl apply -f -
-
+ 
       - name: Create Backend Secret
         run: |
             kubectl create secret generic taskflow-backend-secret \
             --from-literal=SECRET_KEY="${{ secrets.BACKEND_SECRET_KEY }}" \
             --from-literal=DATABASE_URL="postgresql://${{ secrets.TF_VAR_database_username }}:${{ secrets.TF_VAR_database_password }}@${{ steps.terraform.outputs.endpoint }}:5432/${{ secrets.TF_VAR_database_name }}" \
             --dry-run=client -o yaml | kubectl apply -f -
-
+ 
         #DEPLOY PART         --------------------------------------------------------------------------------------
-      - name: Deploy Backend 
+ 
+      - name: Deploy Backend
         run: |
             kubectl apply -f kubernetes/deployment/backend_d.yaml
-
+ 
       - name: Deploy Backend Service
         run: |
             kubectl apply -f kubernetes/service/backend_s.yaml
-
+ 
       - name: Wait for Backend Rollout
         run: |
             kubectl rollout status deployment/backend-deployment --timeout=300s
-
+ 
       - name: Deploy Frontend
         run: |
             kubectl apply -f kubernetes/deployment/frontend_d.yaml
-
+ 
       - name: Deploy Frontend Service
         run: |
             kubectl apply -f kubernetes/service/frontend_s.yaml
-
+ 
       - name: Wait for Frontend Rollout
         run: |
             kubectl rollout status deployment/frontend-deployment --timeout=300s
-
+ 
       - name: Deploy mcp
         run: |
             kubectl apply -f kubernetes/deployment/mcp_d.yaml
-
+ 
       - name: Deploy mcp Service
         run: |
             kubectl apply -f kubernetes/service/mcp_s.yaml
-
+ 
       - name: Wait for mcp Rollout
         run: |
             kubectl rollout status deployment/mcp-deployment --timeout=300s
-
+ 
       - name: Deploy Ingress
         run: |
             kubectl apply -f kubernetes/ingress/ingress.yaml
-
+ 
       - name: Deploy mcp Ingress
         run: |
             kubectl apply -f kubernetes/ingress/mcp_ingress.yaml
-
+ 
+      # Imaginile sunt pe tag :latest, deci kubectl apply nu detecteaza
+      # singur ca imaginea s-a schimbat - restart-ul fortat e ce declanseaza
+      # tragerea imaginii noi din GHCR pe fiecare pod.
       - name: Restart backend deployment
         run: |
             kubectl rollout restart deployment/backend-deployment
             kubectl rollout status deployment/backend-deployment --timeout=300s
-
+ 
       - name: Restart frontend deployment
         run: |
             kubectl rollout restart deployment/frontend-deployment
             kubectl rollout status deployment/frontend-deployment --timeout=300s
-
+ 
       - name: Restart mcp deployment
         run: |
             kubectl rollout restart deployment/mcp-deployment
             kubectl rollout status deployment/mcp-deployment --timeout=300s
-
-
+ 
     #DEBUG PART --------------------------------------------------------------------------------------------
-      - name: Show Ingress
-        run: |
-            kubectl get ingress -o wide
-
+ 
       - name: Describe Pods
         if: failure()
         run: |
             kubectl describe pods
-
+ 
       - name: Get Cluster Events
         if: failure()
         run: |
             kubectl get events --sort-by=.metadata.creationTimestamp
-
+ 
       - name: Verify ALB Controller
         run: |
-            kubectl get pods -n kube-system           
-
+            kubectl get pods -n kube-system
+ 
       - name: Show Services
         run: |
             kubectl get svc
-
+ 
       - name: Show Pods
         run: |
             kubectl get pods -o wide
-
+ 
       - name: Show Ingress
         run: |
             kubectl get ingress -o wide
