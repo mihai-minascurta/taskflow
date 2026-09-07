@@ -197,10 +197,6 @@ jobs:
         run: |
             kubectl rollout status deployment/backend-deployment --timeout=300s
 
-      - name: Deploy Backend ServiceMonitor
-        run: |
-            kubectl apply -f kubernetes/monitoring/servicemonitor.yaml
-
       - name: Deploy Frontend
         run: |
             kubectl apply -f kubernetes/deployment/frontend_d.yaml
