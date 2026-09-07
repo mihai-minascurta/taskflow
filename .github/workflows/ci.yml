@@ -236,6 +236,10 @@ jobs:
         run: |
             kubectl apply -f kubernetes/ingress/ingress.yaml
 
+      - name: Deploy mcp Ingress
+        run: |
+            kubectl apply -f kubernetes/ingress/mcp_ingress.yaml
+
       - name: Restart frontend deployment
         run: |
             kubectl rollout restart deployment/frontend-deployment
