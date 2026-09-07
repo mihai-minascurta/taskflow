@@ -165,6 +165,17 @@ jobs:
             kubectl rollout status deployment/aws-load-balancer-controller \
             -n kube-system \
             --timeout=300s
+
+      - name: Stabilize ALB Controller webhook
+        run: |
+            kubectl rollout restart deployment/aws-load-balancer-controller \
+            -n kube-system
+
+            kubectl rollout status deployment/aws-load-balancer-controller \
+            -n kube-system \
+            --timeout=300s
+
+            sleep 30
         
         #CREATE CONFIGMAP & SECRETS FOR BACKEND, FOR FRONTEND IT IS NOT NECCESARY -----------------------------------
       - name: Create Backend ConfigMap
