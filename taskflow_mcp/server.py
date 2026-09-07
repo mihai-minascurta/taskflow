@@ -1,12 +1,17 @@
 from mcp.server.mcpserver import MCPServer
 from datetime import datetime, timedelta, timezone
 import boto3
+from starlette.responses import JSONResponse
 
 from kubernetes import client, config
 
 mcp = MCPServer("taskflow-infra")
 
 cloudwatch = boto3.client("cloudwatch")
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
+    return JSONResponse({"status": "ok"})
 
 
 def load_k8s_config():
