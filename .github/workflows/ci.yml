@@ -224,6 +224,10 @@ jobs:
       - name: Wait for Frontend Rollout
         run: |
             kubectl rollout status deployment/frontend-deployment --timeout=300s
+
+      - name: Create ServiceAccount for mcp pod.
+        run: |
+            kubectl apply -f kubernetes/rbac/mcp_rbac.yaml
  
       - name: Deploy mcp
         run: |
