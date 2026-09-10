@@ -11,8 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      # ============================================================
+      # 1. CHECKOUT
+      # ============================================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+
+      # ============================================================
+      # 2. AWS CREDENTIALS
+      # ============================================================
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -21,12 +31,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
 
+
+      # ============================================================
+      # 3. TERRAFORM
+      # ============================================================
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         working-directory: terraform/dev
         run: terraform init
+
+
+      # ============================================================
+      # 4. CONNECT TO EKS
+      # ============================================================
 
       - name: Configure kubectl
         working-directory: terraform/dev
@@ -36,53 +56,170 @@ jobs:
             --name $(terraform output -raw cluster_name)
 
 
-      # Delete Kubernetes resources
+      # ============================================================
+      # 5. DELETE KUBERNETES INGRESSES
+      #
+      # ALB Controller must still be running here.
+      # Otherwise the ALBs may remain in AWS.
+      # ============================================================
 
-      - name: Delete Ingress
+      - name: Delete Kubernetes Ingresses
         run: |
-          kubectl delete -f kubernetes/ingress/ingress.yaml --ignore-not-found=true
+          kubectl delete ingress taskflow-ingress \
+            --ignore-not-found=true
+
+          kubectl delete ingress mcp-ingress \
+            --ignore-not-found=true
+
+
+      # ============================================================
+      # 6. WAIT FOR INGRESS RESOURCES TO DISAPPEAR
+      # ============================================================
 
       - name: Wait for Ingress deletion
         run: |
           kubectl wait \
             --for=delete ingress/taskflow-ingress \
-            --timeout=300s || true
+            --timeout=300s
+
+          kubectl wait \
+            --for=delete ingress/mcp-ingress \
+            --timeout=300s
+
+
+      # ============================================================
+      # 7. DELETE APPLICATION RESOURCES
+      # ============================================================
 
       - name: Delete Backend
         run: |
-          kubectl delete -f kubernetes/deployment/backend_d.yaml --ignore-not-found=true
-          kubectl delete -f kubernetes/service/backend_s.yaml --ignore-not-found=true
+          kubectl delete -f kubernetes/deployment/backend_d.yaml \
+            --ignore-not-found=true
+
+          kubectl delete -f kubernetes/service/backend_s.yaml \
+            --ignore-not-found=true
 
       - name: Delete Frontend
         run: |
-          kubectl delete -f kubernetes/deployment/frontend_d.yaml --ignore-not-found=true
-          kubectl delete -f kubernetes/service/frontend_s.yaml --ignore-not-found=true
+          kubectl delete -f kubernetes/deployment/frontend_d.yaml \
+            --ignore-not-found=true
+
+          kubectl delete -f kubernetes/service/frontend_s.yaml \
+            --ignore-not-found=true
+
+
+      # ============================================================
+      # 8. DELETE MCP RESOURCES
+      #
+      # ADD YOUR ACTUAL MCP MANIFEST PATHS HERE
+      # ============================================================
+
+      - name: Delete MCP
+        run: |
+          kubectl delete deployment mcp-deployment \
+            --ignore-not-found=true
+
+          kubectl delete service mcp-service \
+            --ignore-not-found=true
+
+          kubectl delete serviceaccount mcp-service-account \
+            --ignore-not-found=true
+
+
+      # ============================================================
+      # 9. DELETE CONFIGMAPS / SECRETS
+      # ============================================================
 
       - name: Delete ConfigMaps and Secrets
         run: |
-          kubectl delete configmap taskflow-backend-config --ignore-not-found=true
-          kubectl delete configmap taskflow-db-init --ignore-not-found=true
+          kubectl delete configmap taskflow-backend-config \
+            --ignore-not-found=true
 
-          kubectl delete secret taskflow-backend-secret --ignore-not-found=true
-          kubectl delete secret taskflow-db-secret --ignore-not-found=true
+          kubectl delete configmap taskflow-db-init \
+            --ignore-not-found=true
 
-      # Remove ALB Controller
+          kubectl delete secret taskflow-backend-secret \
+            --ignore-not-found=true
+
+          kubectl delete secret taskflow-db-secret \
+            --ignore-not-found=true
+
+
+      # ============================================================
+      # 10. WAIT FOR AWS LOAD BALANCERS
+      #
+      # The controller needs time to delete ALBs created by
+      # the Kubernetes Ingress resources.
+      # ============================================================
+
+      - name: Wait for AWS Load Balancers
+        run: |
+          echo "Waiting for AWS Load Balancer Controller to clean up ALBs..."
+
+          for i in {1..60}; do
+
+            ALB_COUNT=$(aws elbv2 describe-load-balancers \
+              --region eu-central-1 \
+              --query 'length(LoadBalancers)' \
+              --output text)
+
+            echo "Load balancers remaining: $ALB_COUNT"
+
+            if [ "$ALB_COUNT" = "0" ]; then
+              echo "No load balancers remain."
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "ALBs still exist after 10 minutes."
+          exit 1
+
+
+      # ============================================================
+      # 11. REMOVE AWS LOAD BALANCER CONTROLLER
+      # ============================================================
 
       - name: Setup Helm
         uses: azure/setup-helm@v4
 
-      - name: Uninstall ALB Controller
+      - name: Uninstall AWS Load Balancer Controller
         run: |
           helm uninstall aws-load-balancer-controller \
             -n kube-system || true
 
-      - name: Delete ALB ServiceAccount
+
+      # ============================================================
+      # 12. REMOVE CONTROLLER SERVICE ACCOUNT
+      # ============================================================
+
+      - name: Delete ALB Controller ServiceAccount
         run: |
-          kubectl delete serviceaccount aws-load-balancer-controller \
+          kubectl delete serviceaccount \
+            aws-load-balancer-controller \
             -n kube-system \
             --ignore-not-found=true
 
-      # Destroy infrastructure
+
+      # ============================================================
+      # 13. TERRAFORM DESTROY
+      #
+      # Terraform now handles the AWS infrastructure:
+      #
+      # VPC
+      # Subnets
+      # Route Tables
+      # Internet Gateway
+      # NAT Gateway
+      # Elastic IPs
+      # Security Groups
+      # EKS
+      # Node Groups
+      # RDS
+      # IAM
+      # etc.
+      # ============================================================
 
       - name: Terraform Destroy
         working-directory: terraform/dev
@@ -90,4 +227,5 @@ jobs:
           TF_VAR_database_name: ${{ secrets.TF_VAR_database_name }}
           TF_VAR_database_username: ${{ secrets.TF_VAR_database_username }}
           TF_VAR_database_password: ${{ secrets.TF_VAR_database_password }}
-        run: terraform destroy -auto-approve
+        run: |
+          terraform destroy -auto-approve
