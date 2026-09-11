@@ -190,12 +190,14 @@ jobs:
             --from-literal=LOG_LEVEL=INFO \
             --from-literal=PORT=5000 \
             --from-literal=CORS_ORIGINS=* \
+            --from-literal=MCP_SERVER_URL=https://mcp.mihaiminascurta.dpdns.org/mcp \
             --dry-run=client -o yaml | kubectl apply -f -
  
       - name: Create Backend Secret
         run: |
             kubectl create secret generic taskflow-backend-secret \
             --from-literal=SECRET_KEY="${{ secrets.BACKEND_SECRET_KEY }}" \
+            --from-literal=GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}" \
             --from-literal=DATABASE_URL="postgresql://${{ secrets.TF_VAR_database_username }}:${{ secrets.TF_VAR_database_password }}@${{ steps.terraform.outputs.endpoint }}:5432/${{ secrets.TF_VAR_database_name }}" \
             --dry-run=client -o yaml | kubectl apply -f -
  

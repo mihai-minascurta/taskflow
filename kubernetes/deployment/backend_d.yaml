@@ -60,11 +60,23 @@ spec:
                   name: taskflow-backend-secret
                   key: SECRET_KEY
 
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-backend-secret
+                  key: GROQ_API_KEY
+
             - name: FLASK_ENV
               valueFrom:
                 configMapKeyRef:
                   name: taskflow-backend-config
                   key: FLASK_ENV
+
+            - name: MCP_SERVER_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: taskflow-backend-config
+                  key: MCP_SERVER_URL
 
             - name: LOG_LEVEL
               valueFrom:
