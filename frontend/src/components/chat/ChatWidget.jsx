@@ -8,7 +8,6 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const previousResponseId = useRef(null)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -19,18 +18,39 @@ export default function ChatWidget() {
 
   async function handleSend(event) {
     event.preventDefault()
+
     const text = input.trim()
+
     if (!text || loading) return
 
-    setMessages((prev) => [...prev, { role: 'user', text }])
+    // Snapshot the current conversation BEFORE adding the new message.
+    const conversationHistory = messages.map(({ role, text }) => ({
+      role,
+      text,
+    }))
+
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', text },
+    ])
+
     setInput('')
     setLoading(true)
     setError(null)
 
     try {
-      const data = await sendChatMessage(text, previousResponseId.current)
-      previousResponseId.current = data.response_id || null
-      setMessages((prev) => [...prev, { role: 'assistant', text: data.reply }])
+      const data = await sendChatMessage(
+        text,
+        conversationHistory,
+      )
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: data.reply,
+        },
+      ])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -44,6 +64,7 @@ export default function ChatWidget() {
         <div className="chat-panel card">
           <div className="chat-panel-header">
             <span>TaskFlow Assistant</span>
+
             <button
               type="button"
               className="chat-close-btn"
@@ -56,24 +77,39 @@ export default function ChatWidget() {
 
           <div className="chat-messages">
             {messages.length === 0 && !loading && (
-              <p className="chat-empty">Ask me anything about your projects and tasks.</p>
+              <p className="chat-empty">
+                Ask me anything about your projects and tasks.
+              </p>
             )}
+
             {messages.map((message, index) => (
-              <div key={index} className={`chat-message chat-message-${message.role}`}>
+              <div
+                key={index}
+                className={`chat-message chat-message-${message.role}`}
+              >
                 {message.text}
               </div>
             ))}
+
             {loading && (
               <div className="chat-message chat-message-assistant chat-message-loading">
                 <span className="spinner" />
               </div>
             )}
+
             <div ref={messagesEndRef} />
           </div>
 
-          {error && <div className="error-box chat-error">{error}</div>}
+          {error && (
+            <div className="error-box chat-error">
+              {error}
+            </div>
+          )}
 
-          <form className="chat-input-row" onSubmit={handleSend}>
+          <form
+            className="chat-input-row"
+            onSubmit={handleSend}
+          >
             <input
               type="text"
               className="form-input"
@@ -82,6 +118,7 @@ export default function ChatWidget() {
               onChange={(event) => setInput(event.target.value)}
               disabled={loading}
             />
+
             <button
               type="submit"
               className="btn btn-primary btn-sm"
@@ -104,3 +141,4 @@ export default function ChatWidget() {
     </div>
   )
 }
+
